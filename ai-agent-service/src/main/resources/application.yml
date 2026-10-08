@@ -1,0 +1,28 @@
+server:
+  port: 8085
+
+spring:
+  application:
+    name: ai-agent-service
+  datasource:
+    url: jdbc:h2:mem:aiagentservice
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+  h2:
+    console:
+      enabled: true      # http://localhost:8085/h2-console
+  cloud:
+    stream:
+      kafka:
+        binder:
+          brokers: localhost:9092
+
+langchain4j:
+  google-ai-gemini:
+    chat-model:
+      api-key: ${GEMINI_API_KEY:put-your-key-here}
+      model-name: gemini-2.5-flash

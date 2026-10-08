@@ -1,0 +1,22 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: customer-service
+  datasource:
+    url: jdbc:h2:mem:customerservice
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+  h2:
+    console:
+      enabled: true      # http://localhost:8082/h2-console
+  cloud:
+    stream:
+      kafka:
+        binder:
+          brokers: localhost:9092
