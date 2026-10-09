@@ -11,6 +11,14 @@
 
     <artifactId>customer-service</artifactId>
 
+    <dependencies>
+        <!-- Only the password hashing part of Spring Security (no login filters on the endpoints) -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-crypto</artifactId>
+        </dependency>
+    </dependencies>
+
     <build>
         <plugins>
             <plugin>

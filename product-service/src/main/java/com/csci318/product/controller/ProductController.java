@@ -9,7 +9,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/products")
-@CrossOrigin   // lets the frontend call this from a browser
 public class ProductController {
 
     private final ProductRepository repo;
