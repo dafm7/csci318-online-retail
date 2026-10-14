@@ -1,5 +1,6 @@
 package com.csci318.product;
 
+import com.csci318.product.event.StockEventPublisher;
 import com.csci318.product.model.Product;
 import com.csci318.product.repository.ProductRepository;
 import org.springframework.boot.CommandLineRunner;
@@ -9,8 +10,12 @@ import org.springframework.stereotype.Component;
 @Component
 public class DataLoader implements CommandLineRunner {
     private final ProductRepository repo;
+    private final StockEventPublisher publisher;
 
-    public DataLoader(ProductRepository repo) { this.repo = repo; }
+    public DataLoader(ProductRepository repo, StockEventPublisher publisher) {
+        this.repo = repo;
+        this.publisher = publisher;
+    }
 
     @Override
     public void run(String... args) {
@@ -20,5 +25,7 @@ public class DataLoader implements CommandLineRunner {
             repo.save(new Product("Running Shoes", "Sport", 89.50, 35));
             repo.save(new Product("Coffee Mug", "Home", 12.00, 100));
         }
+        // Tell inventory-service the starting stock of every product
+        repo.findAll().forEach(publisher::stockChanged);
     }
 }

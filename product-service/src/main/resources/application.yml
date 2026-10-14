@@ -1,5 +1,7 @@
 server:
   port: 8081
+  error:
+    include-message: always   # show e.g. "product not found" in error responses
 
 spring:
   application:
@@ -24,3 +26,5 @@ spring:
         reduceStock-in-0:
           destination: order-placed
           group: product-service
+        stockChanged-out-0:
+          destination: stock-changed

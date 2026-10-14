@@ -11,11 +11,12 @@ public class InventoryEventHandler {
 
     // Bound to the "order-placed" topic in application.yml (reduceStock-in-0)
     @Bean
-    public Consumer<OrderPlacedEvent> reduceStock(ProductRepository repo) {
+    public Consumer<OrderPlacedEvent> reduceStock(ProductRepository repo, StockEventPublisher publisher) {
         return event -> repo.findById(event.productId()).ifPresent(p -> {
             p.setStock(p.getStock() - event.quantity());
             repo.save(p);
-            System.out.println("[product-service] stock reduced for product " + p.getId());
+            publisher.stockChanged(p);
+            System.out.println("[product-service] stock reduced for product " + p.getId() + " -> " + p.getStock());
         });
     }
 }
