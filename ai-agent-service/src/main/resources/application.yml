@@ -26,3 +26,8 @@ langchain4j:
     chat-model:
       api-key: ${GEMINI_API_KEY:put-your-key-here}
       model-name: gemini-2.5-flash
+
+# Where the REST clients in infrastructure/client find the other services
+services:
+  product-url: http://localhost:8081
+  order-url: http://localhost:8083

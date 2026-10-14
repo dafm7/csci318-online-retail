@@ -1,7 +1,7 @@
 package com.csci318.customer.service;
 
-import com.csci318.customer.model.Customer;
-import com.csci318.customer.repository.CustomerRepository;
+import com.csci318.customer.domain.Customer;
+import com.csci318.customer.infrastructure.persistence.CustomerRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;

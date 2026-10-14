@@ -1,15 +1,16 @@
 package com.csci318.product.service;
 
-import com.csci318.product.event.StockEventPublisher;
-import com.csci318.product.model.Product;
-import com.csci318.product.repository.ProductRepository;
+import com.csci318.product.domain.Product;
+import com.csci318.product.domain.event.OrderPlacedEvent;
+import com.csci318.product.infrastructure.messaging.StockEventPublisher;
+import com.csci318.product.infrastructure.persistence.ProductRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
-// Business rules for products; the controller only handles HTTP
+// Use cases for products; the controller and event handler only pass requests in
 @Service
 public class ProductService {
 
@@ -50,5 +51,20 @@ public class ProductService {
     public Product get(Long id) {
         return repo.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "product not found"));
+    }
+
+    // Called for every OrderPlacedEvent: reduce stock and announce the new level
+    public void reduceStockForOrder(OrderPlacedEvent event) {
+        repo.findById(event.productId()).ifPresent(p -> {
+            if (!p.hasStock(event.quantity())) {
+                System.out.println("[product-service] NOT ENOUGH STOCK for product " + p.getId()
+                        + " (order " + event.orderId() + "): " + p.getStock() + " left, " + event.quantity() + " requested");
+                return;
+            }
+            p.reduceStock(event.quantity());
+            repo.save(p);
+            publisher.stockChanged(p);
+            System.out.println("[product-service] stock reduced for product " + p.getId() + " -> " + p.getStock());
+        });
     }
 }
