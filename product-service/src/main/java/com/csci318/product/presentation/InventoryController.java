@@ -1,7 +1,7 @@
-package com.csci318.inventory.presentation;
+package com.csci318.product.presentation;
 
-import com.csci318.inventory.domain.event.StockChangedEvent;
-import com.csci318.inventory.service.InventoryService;
+import com.csci318.product.domain.event.StockChangedEvent;
+import com.csci318.product.service.InventoryService;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;

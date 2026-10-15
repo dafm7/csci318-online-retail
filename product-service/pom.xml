@@ -11,6 +11,14 @@
 
     <artifactId>product-service</artifactId>
 
+    <dependencies>
+        <!-- Kafka Streams (stream processing) through Spring Cloud Stream -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-stream-binder-kafka-streams</artifactId>
+        </dependency>
+    </dependencies>
+
     <build>
         <plugins>
             <plugin>

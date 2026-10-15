@@ -1,8 +1,8 @@
-package com.csci318.inventory.infrastructure.stream;
+package com.csci318.product.infrastructure.stream;
 
-import com.csci318.inventory.domain.LowStockPolicy;
-import com.csci318.inventory.domain.event.LowStockAlert;
-import com.csci318.inventory.domain.event.StockChangedEvent;
+import com.csci318.product.domain.LowStockPolicy;
+import com.csci318.product.domain.event.LowStockAlert;
+import com.csci318.product.domain.event.StockChangedEvent;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.common.utils.Bytes;
 import org.apache.kafka.streams.kstream.Grouped;
@@ -41,7 +41,7 @@ public class InventoryStream {
             return byProduct
                     .filter((id, e) -> policy.isLow(e))
                     .mapValues(policy::alertFor)
-                    .peek((id, a) -> System.out.println("[inventory-service] LOW STOCK ALERT: " + a.name()
+                    .peek((id, a) -> System.out.println("[product-service] LOW STOCK ALERT: " + a.name()
                             + " (product " + a.productId() + ") has " + a.stock() + " left, threshold " + a.threshold()));
         };
     }

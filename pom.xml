@@ -22,7 +22,6 @@
         <module>order-service</module>
         <module>payment-service</module>
         <module>ai-agent-service</module>
-        <module>inventory-service</module>
     </modules>
 
     <properties>

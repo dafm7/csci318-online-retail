@@ -24,7 +24,7 @@ public class DataLoader implements CommandLineRunner {
             repo.save(new Product("Running Shoes", "Sport", 89.50, 35));
             repo.save(new Product("Coffee Mug", "Home", 12.00, 100));
         }
-        // Tell inventory-service the starting stock of every product
+        // Publish the starting stock of every product (feeds the live stock table)
         repo.findAll().forEach(publisher::stockChanged);
     }
 }

@@ -1,6 +1,6 @@
-package com.csci318.inventory.infrastructure.stream;
+package com.csci318.product.infrastructure.stream;
 
-import com.csci318.inventory.domain.event.StockChangedEvent;
+import com.csci318.product.domain.event.StockChangedEvent;
 import org.apache.kafka.streams.state.KeyValueIterator;
 import org.apache.kafka.streams.state.QueryableStoreTypes;
 import org.apache.kafka.streams.state.ReadOnlyKeyValueStore;

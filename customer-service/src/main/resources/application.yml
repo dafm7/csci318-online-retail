@@ -17,8 +17,15 @@ spring:
   h2:
     console:
       enabled: true      # http://localhost:8082/h2-console
+  jackson:
+    serialization:
+      indent-output: true   # pretty-print JSON so it's readable in the terminal
   cloud:
     stream:
       kafka:
         binder:
           brokers: localhost:9092
+
+# Where the REST client in infrastructure/client finds order-service
+services:
+  order-url: http://localhost:8083

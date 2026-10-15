@@ -3,6 +3,9 @@ server:
   error:
     include-message: always   # show e.g. "product not found" in error responses
 
+inventory:
+  low-stock-threshold: 10   # stock below this raises a LowStockAlert
+
 spring:
   application:
     name: product-service
@@ -17,14 +20,50 @@ spring:
   h2:
     console:
       enabled: true      # http://localhost:8081/h2-console
+  jackson:
+    serialization:
+      indent-output: true   # pretty-print JSON so it's readable in the terminal
   cloud:
+    function:
+      # reduceStock: normal Kafka consumer.  inventory, sales: Kafka Streams topologies
+      definition: reduceStock;inventory;sales
     stream:
-      kafka:
-        binder:
-          brokers: localhost:9092
       bindings:
+        # --- event-driven (normal Kafka binder) ---
         reduceStock-in-0:
           destination: order-placed
           group: product-service
+          binder: kafka
         stockChanged-out-0:
           destination: stock-changed
+          binder: kafka
+        # --- stream processing (Kafka Streams binder) ---
+        inventory-in-0:
+          destination: stock-changed
+        inventory-out-0:
+          destination: low-stock-alerts
+        sales-in-0:
+          destination: order-placed
+        sales-in-1:
+          destination: payment-completed
+      kafka:
+        binder:
+          brokers: localhost:9092
+        streams:
+          bindings:
+            # Sales analysis starts from new orders only (ignore old events left in Kafka)
+            sales-in-0:
+              consumer:
+                startOffset: latest
+            sales-in-1:
+              consumer:
+                startOffset: latest
+          binder:
+            brokers: localhost:9092
+            functions:
+              inventory:
+                applicationId: product-inventory
+              sales:
+                applicationId: product-sales
+            configuration:
+              commit.interval.ms: 1000   # flush results every second (real-time demo)

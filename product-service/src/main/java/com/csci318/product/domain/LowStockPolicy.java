@@ -1,7 +1,7 @@
-package com.csci318.inventory.domain;
+package com.csci318.product.domain;
 
-import com.csci318.inventory.domain.event.LowStockAlert;
-import com.csci318.inventory.domain.event.StockChangedEvent;
+import com.csci318.product.domain.event.LowStockAlert;
+import com.csci318.product.domain.event.StockChangedEvent;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 

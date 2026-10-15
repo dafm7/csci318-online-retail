@@ -1,8 +1,8 @@
-package com.csci318.inventory.service;
+package com.csci318.product.service;
 
-import com.csci318.inventory.domain.LowStockPolicy;
-import com.csci318.inventory.domain.event.StockChangedEvent;
-import com.csci318.inventory.infrastructure.stream.StockLevelStore;
+import com.csci318.product.domain.LowStockPolicy;
+import com.csci318.product.domain.event.StockChangedEvent;
+import com.csci318.product.infrastructure.stream.StockLevelStore;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;

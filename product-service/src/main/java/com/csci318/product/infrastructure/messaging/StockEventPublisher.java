@@ -5,7 +5,7 @@ import com.csci318.product.domain.event.StockChangedEvent;
 import org.springframework.cloud.stream.function.StreamBridge;
 import org.springframework.stereotype.Component;
 
-// Publishes StockChangedEvent to the "stock-changed" topic (consumed by inventory-service)
+// Publishes StockChangedEvent to the "stock-changed" topic (used by the stock streams)
 @Component
 public class StockEventPublisher {
 
