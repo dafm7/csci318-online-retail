@@ -9,7 +9,7 @@
         <version>1.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>customer-service</artifactId>
+    <artifactId>user-service</artifactId>
 
     <dependencies>
         <!-- Only the password hashing part of Spring Security (no login filters on the endpoints) -->

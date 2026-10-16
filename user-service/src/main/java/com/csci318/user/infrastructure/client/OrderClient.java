@@ -1,4 +1,4 @@
-package com.csci318.customer.infrastructure.client;
+package com.csci318.user.infrastructure.client;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -8,7 +8,7 @@ import org.springframework.web.client.RestClientException;
 import java.util.List;
 import java.util.Optional;
 
-// REST client for order-service (used to show a customer's order history on their profile)
+// REST client for order-service (used to show a user's order history on their profile)
 @Component
 public class OrderClient {
 
@@ -21,11 +21,11 @@ public class OrderClient {
     }
 
     // Empty if order-service is not reachable, so the profile still works without it
-    public Optional<List<OrderData>> ordersFor(Long customerId) {
+    public Optional<List<OrderData>> ordersFor(Long userId) {
         try {
-            return Optional.of(List.of(api.get().uri("?customerId={c}", customerId).retrieve().body(OrderData[].class)));
+            return Optional.of(List.of(api.get().uri("?customerId={c}", userId).retrieve().body(OrderData[].class)));
         } catch (RestClientException e) {
-            System.out.println("[customer-service] order-service unavailable: " + e.getMessage());
+            System.out.println("[user-service] order-service unavailable: " + e.getMessage());
             return Optional.empty();
         }
     }

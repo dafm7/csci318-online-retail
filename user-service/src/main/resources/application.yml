@@ -5,9 +5,9 @@ server:
 
 spring:
   application:
-    name: customer-service
+    name: user-service
   datasource:
-    url: jdbc:h2:mem:customerservice
+    url: jdbc:h2:mem:userservice
     username: sa
     password:
   jpa:
@@ -29,3 +29,8 @@ spring:
 # Where the REST client in infrastructure/client finds order-service
 services:
   order-url: http://localhost:8083
+
+# Admin account created on startup (see infrastructure/persistence/DataLoader)
+admin:
+  email: admin@shop.com
+  password: admin123
