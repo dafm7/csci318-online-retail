@@ -1,18 +1,19 @@
 package com.csci318.user.service;
 
-import com.csci318.user.domain.User;
-import com.csci318.user.infrastructure.client.OrderClient;
-import com.csci318.user.infrastructure.client.OrderClient.OrderData;
-import com.csci318.user.infrastructure.persistence.UserRepository;
+import java.util.Comparator;
+import java.util.List;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.Comparator;
-import java.util.List;
+import com.csci318.user.domain.User;
+import com.csci318.user.infrastructure.client.OrderClient;
+import com.csci318.user.infrastructure.client.OrderClient.OrderData;
+import com.csci318.user.infrastructure.persistence.UserRepository;
 
-// Business rules for users; the controller only handles HTTP
+// Business rules for users the controller only handles HTTP
 @Service
 public class UserService {
 

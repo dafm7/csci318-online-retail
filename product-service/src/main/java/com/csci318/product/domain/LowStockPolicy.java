@@ -2,22 +2,19 @@ package com.csci318.product.domain;
 
 import com.csci318.product.domain.event.LowStockAlert;
 import com.csci318.product.domain.event.StockChangedEvent;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-// Domain rule: a product is low on stock when it has fewer units than the threshold
+// Domain rule for the stock stream: a stock level is low when it is below that product's threshold
 @Component
 public class LowStockPolicy {
 
-    private final int threshold;
+    public int thresholdOf(StockChangedEvent level) {
+        return level.lowStockThreshold() != null ? level.lowStockThreshold() : Product.DEFAULT_LOW_STOCK_THRESHOLD;
+    }
 
-    public LowStockPolicy(@Value("${inventory.low-stock-threshold}") int threshold) { this.threshold = threshold; }
-
-    public boolean isLow(int stock) { return stock < threshold; }
-
-    public boolean isLow(StockChangedEvent level) { return isLow(level.stock()); }
+    public boolean isLow(StockChangedEvent level) { return level.stock() < thresholdOf(level); }
 
     public LowStockAlert alertFor(StockChangedEvent level) {
-        return new LowStockAlert(level.productId(), level.name(), level.stock(), threshold);
+        return new LowStockAlert(level.productId(), level.name(), level.stock(), thresholdOf(level));
     }
 }

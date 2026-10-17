@@ -14,6 +14,6 @@ public class StockEventPublisher {
     public StockEventPublisher(StreamBridge streamBridge) { this.streamBridge = streamBridge; }
 
     public void stockChanged(Product p) {
-        streamBridge.send("stockChanged-out-0", new StockChangedEvent(p.getId(), p.getName(), p.getStock()));
+        streamBridge.send("stockChanged-out-0", new StockChangedEvent(p.getId(), p.getName(), p.getStock(), p.getLowStockThreshold()));
     }
 }

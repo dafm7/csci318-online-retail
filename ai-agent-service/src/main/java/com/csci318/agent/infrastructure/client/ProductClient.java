@@ -6,6 +6,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
 import java.util.List;
+import java.util.Optional;
 
 // REST client for product-service
 @Component
@@ -17,8 +18,18 @@ public class ProductClient {
         this.api = RestClient.create(baseUrl + "/api/products");
     }
 
-    public List<ProductInfo> search(String keyword) {
-        return List.of(api.get().uri("?search={k}", keyword).retrieve().body(ProductInfo[].class));
+    // Every filter is optional; null filters are left out of the URL
+    public List<ProductInfo> find(String keyword, String category, Double minPrice, Double maxPrice,
+                                  Boolean inStockOnly, String sort) {
+        return List.of(api.get().uri(b -> b
+                        .queryParamIfPresent("search", Optional.ofNullable(keyword))
+                        .queryParamIfPresent("category", Optional.ofNullable(category))
+                        .queryParamIfPresent("minPrice", Optional.ofNullable(minPrice))
+                        .queryParamIfPresent("maxPrice", Optional.ofNullable(maxPrice))
+                        .queryParamIfPresent("inStock", Optional.ofNullable(inStockOnly))
+                        .queryParamIfPresent("sort", Optional.ofNullable(sort))
+                        .build())
+                .retrieve().body(ProductInfo[].class));
     }
 
     public List<ProductInfo> all() {

@@ -22,8 +22,18 @@ public class ShopTools {
         this.orders = orders;
     }
 
-    @Tool("Search products by name keyword. Returns id, name, category, price, stock.")
-    public List<ProductInfo> searchProducts(@P("keyword to search for") String keyword) { return products.search(keyword); }
+    @Tool("""
+            Find products. Every filter is optional and they can be combined, e.g. "electronics under $100, cheapest first".
+            Returns id, name, category, price, stock, availability.""")
+    public List<ProductInfo> findProducts(
+            @P(value = "part of the product name, e.g. keyboard", required = false) String keyword,
+            @P(value = "one of CLOTHES, ELECTRONICS, SPORTS, HOME", required = false) String category,
+            @P(value = "minimum price in dollars", required = false) Double minPrice,
+            @P(value = "maximum price in dollars", required = false) Double maxPrice,
+            @P(value = "true to only show products that are in stock", required = false) Boolean inStockOnly,
+            @P(value = "one of price, price_desc, name, name_desc, stock, stock_desc", required = false) String sort) {
+        return products.find(keyword, category, minPrice, maxPrice, inStockOnly, sort);
+    }
 
     @Tool("List all products in the shop")
     public List<ProductInfo> listProducts() { return products.all(); }

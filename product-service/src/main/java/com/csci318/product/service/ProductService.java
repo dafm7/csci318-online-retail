@@ -1,11 +1,11 @@
 package com.csci318.product.service;
 
 import com.csci318.product.domain.Category;
-import com.csci318.product.domain.LowStockPolicy;
 import com.csci318.product.domain.Product;
 import com.csci318.product.domain.event.OrderPlacedEvent;
 import com.csci318.product.infrastructure.messaging.StockEventPublisher;
 import com.csci318.product.infrastructure.persistence.ProductRepository;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -21,20 +21,19 @@ public class ProductService {
     private final ProductRepository repo;
     private final StockEventPublisher publisher;
     private final AdminAccess adminAccess;
-    private final LowStockPolicy lowStockPolicy;
 
-    public ProductService(ProductRepository repo, StockEventPublisher publisher,
-                          AdminAccess adminAccess, LowStockPolicy lowStockPolicy) {
+    public ProductService(ProductRepository repo, StockEventPublisher publisher, AdminAccess adminAccess) {
         this.repo = repo;
         this.publisher = publisher;
         this.adminAccess = adminAccess;
-        this.lowStockPolicy = lowStockPolicy;
     }
 
     // Admin only
-    public Product add(Long userId, String name, String category, double price, int stock) {
+    // lowStockThreshold is optional (null -> default of 10)
+    public Product add(Long userId, String name, String category, double price, int stock, Integer lowStockThreshold) {
         adminAccess.requireAdmin(userId);
-        Product saved = repo.save(domainRule(() -> Product.create(name, Category.from(category), price, stock)));
+        int threshold = (lowStockThreshold == null) ? Product.DEFAULT_LOW_STOCK_THRESHOLD : lowStockThreshold;
+        Product saved = repo.save(domainRule(() -> Product.create(name, Category.from(category), price, stock, threshold)));
         publisher.stockChanged(saved);
         return saved;
     }
@@ -50,16 +49,31 @@ public class ProductService {
         return saved;
     }
 
-    // No filters -> all products; search matches part of the name; category is one of the 4 categories
-    public List<Product> find(String search, String category) {
-        Category cat = (category == null) ? null : domainRule(() -> Category.from(category));
-        List<Product> products = (search != null) ? repo.findByNameContainingIgnoreCase(search)
-                : (cat != null) ? repo.findByCategory(cat)
-                : repo.findAll();
-        if (search != null && cat != null) {
-            products = products.stream().filter(p -> p.getCategory() == cat).toList();
+    // Customer search: any combination of name, category, price range, in-stock and sort order
+    public List<Product> find(ProductSearch q) {
+        Category category = (q.category() == null) ? null : domainRule(() -> Category.from(q.category()));
+        if (q.minPrice() != null && q.minPrice() < 0 || q.maxPrice() != null && q.maxPrice() < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "prices cannot be negative");
         }
-        return products;
+        if (q.minPrice() != null && q.maxPrice() != null && q.minPrice() > q.maxPrice()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "minPrice cannot be greater than maxPrice");
+        }
+        String search = (q.search() == null || q.search().isBlank()) ? null : q.search().trim();
+        return repo.search(search, category, q.minPrice(), q.maxPrice(), q.inStock(), sortOrder(q.sort()));
+    }
+
+    private static Sort sortOrder(String sort) {
+        if (sort == null || sort.isBlank()) return Sort.by("id");
+        return switch (sort.trim().toLowerCase()) {
+            case "price", "price_asc" -> Sort.by("price").ascending();
+            case "price_desc" -> Sort.by("price").descending();
+            case "name", "name_asc" -> Sort.by("name").ascending();
+            case "name_desc" -> Sort.by("name").descending();
+            case "stock", "stock_asc" -> Sort.by("stock").ascending();
+            case "stock_desc" -> Sort.by("stock").descending();
+            default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "sort must be one of price, price_desc, name, name_desc, stock, stock_desc");
+        };
     }
 
     public Product get(Long id) {
@@ -78,7 +92,7 @@ public class ProductService {
                     .filter(p -> p.getCategory() == cat)
                     .sorted(Comparator.comparing(Product::getName))
                     .map(p -> new ProductCatalogue.ProductLine(p.getId(), p.getName(), p.getPrice(), p.getStock(),
-                            lowStockPolicy.isLow(p.getStock())))
+                            p.getLowStockThreshold(), p.getAvailability()))
                     .toList();
             return new ProductCatalogue.CategoryGroup(cat, lines.size(),
                     lines.stream().mapToInt(ProductCatalogue.ProductLine::stock).sum(), lines);

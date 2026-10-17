@@ -29,6 +29,7 @@ Spring Boot 3.4 · JDK 21 · Spring Data JPA + H2 · Spring Cloud Stream (Kafka)
 curl http://localhost:8081/api/products
 curl "http://localhost:8081/api/products?search=key"
 curl "http://localhost:8081/api/products?category=electronics"   # CLOTHES, ELECTRONICS, SPORTS, HOME
+curl "http://localhost:8081/api/products?minPrice=20&maxPrice=100&inStock=true&sort=price"   # sort: price, price_desc, name, name_desc, stock, stock_desc
 curl http://localhost:8081/api/products/categories
 # Admin only (user 1 = admin@shop.com, created on startup). Send the admin's id in X-User-Id
 curl -X POST http://localhost:8081/api/products -H "Content-Type: application/json" -H "X-User-Id: 1" -d '{"name":"Gaming Headset","category":"ELECTRONICS","price":79.95,"stock":15}'

@@ -3,9 +3,6 @@ server:
   error:
     include-message: always   # show e.g. "product not found" in error responses
 
-inventory:
-  low-stock-threshold: 10   # stock below this raises a LowStockAlert
-
 spring:
   application:
     name: product-service
