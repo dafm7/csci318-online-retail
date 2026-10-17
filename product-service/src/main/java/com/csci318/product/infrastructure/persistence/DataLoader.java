@@ -1,7 +1,8 @@
 package com.csci318.product.infrastructure.persistence;
 
-import com.csci318.product.infrastructure.messaging.StockEventPublisher;
+import com.csci318.product.domain.Category;
 import com.csci318.product.domain.Product;
+import com.csci318.product.infrastructure.messaging.StockEventPublisher;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
@@ -19,10 +20,11 @@ public class DataLoader implements CommandLineRunner {
     @Override
     public void run(String... args) {
         if (repo.count() == 0) {
-            repo.save(new Product("Wireless Mouse", "Electronics", 29.99, 50));
-            repo.save(new Product("Mechanical Keyboard", "Electronics", 119.00, 20));
-            repo.save(new Product("Running Shoes", "Sport", 89.50, 35));
-            repo.save(new Product("Coffee Mug", "Home", 12.00, 100));
+            repo.save(Product.create("Wireless Mouse", Category.ELECTRONICS, 29.99, 50));
+            repo.save(Product.create("Mechanical Keyboard", Category.ELECTRONICS, 119.00, 20));
+            repo.save(Product.create("Running Shoes", Category.SPORTS, 89.50, 35));
+            repo.save(Product.create("Coffee Mug", Category.HOME, 12.00, 100));
+            repo.save(Product.create("Hoodie", Category.CLOTHES, 49.95, 40));
         }
         // Publish the starting stock of every product (feeds the live stock table)
         repo.findAll().forEach(publisher::stockChanged);

@@ -67,3 +67,7 @@ spring:
                 applicationId: product-sales
             configuration:
               commit.interval.ms: 1000   # flush results every second (real-time demo)
+
+# Where the REST client in infrastructure/client finds user-service (admin role checks)
+services:
+  user-url: http://localhost:8082

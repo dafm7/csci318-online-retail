@@ -16,12 +16,15 @@ public class UserController {
 
     public UserController(UserService service) { this.service = service; }
 
+    public record RegisterRequest(String name, String email, String password) {}
     public record LoginRequest(String email, String password) {}
 
     // POST {"name","email","password"}  -> new user with role CUSTOMER
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
-    public User register(@RequestBody User user) { return service.register(user); }
+    public User register(@RequestBody RegisterRequest req) {
+        return service.register(req.name(), req.email(), req.password());
+    }
 
     // POST {"email","password"} -> the user, including their role (use the id for orders / profile)
     @PostMapping("/login")

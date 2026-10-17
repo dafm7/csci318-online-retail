@@ -1,6 +1,5 @@
 package com.csci318.user.service;
 
-import com.csci318.user.domain.Role;
 import com.csci318.user.domain.User;
 import com.csci318.user.infrastructure.client.OrderClient;
 import com.csci318.user.infrastructure.client.OrderClient.OrderData;
@@ -28,20 +27,24 @@ public class UserService {
         this.orderClient = orderClient;
     }
 
-    // Anyone who registers is a CUSTOMER
-    public User register(User user) {
-        if (isBlank(user.getName()) || isBlank(user.getEmail()) || isBlank(user.getPassword())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "name, email and password are required");
+    // Anyone who registers is a CUSTOMER (the User factory decides the role)
+    public User register(String name, String email, String password) {
+        if (isBlank(password)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "password is required");
         }
-        if (repo.existsByEmail(user.getEmail())) {
+        if (email != null && repo.existsByEmail(email)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "email already registered");
         }
-        return repo.save(new User(user.getName(), user.getEmail(), encoder.encode(user.getPassword()), Role.CUSTOMER));
+        try {
+            return repo.save(User.registerCustomer(name, email, encoder.encode(password)));
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        }
     }
 
     public void createAdminIfMissing(String name, String email, String password) {
         if (!repo.existsByEmail(email)) {
-            repo.save(new User(name, email, encoder.encode(password), Role.ADMIN));
+            repo.save(User.createAdmin(name, email, encoder.encode(password)));
             System.out.println("[user-service] admin account created: " + email);
         }
     }

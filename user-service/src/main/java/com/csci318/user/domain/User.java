@@ -1,8 +1,10 @@
 package com.csci318.user.domain;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
+// Aggregate root of the user management context.
+// Created only through the factory methods below, so every user starts in a valid state.
 // Table named "users" because USER is a reserved word in SQL
 @Entity
 @Table(name = "users")
@@ -14,30 +16,37 @@ public class User {
     @Column(unique = true)
     private String email;
 
-    // Stores the BCrypt hash. WRITE_ONLY: accepted in requests, never returned in JSON responses
-    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+    @JsonIgnore   // BCrypt hash, never returned in JSON responses
     private String password;
 
-    // READ_ONLY: shown in responses, but a client cannot register itself as ADMIN
-    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     @Enumerated(EnumType.STRING)
-    private Role role = Role.CUSTOMER;
+    private Role role;
 
-    public User() {}
+    protected User() {}   // for JPA only
 
-    public User(String name, String email, String password, Role role) {
+    private User(String name, String email, String passwordHash, Role role) {
+        if (name == null || name.isBlank()) throw new IllegalArgumentException("name is required");
+        if (email == null || email.isBlank()) throw new IllegalArgumentException("email is required");
+        if (passwordHash == null || passwordHash.isBlank()) throw new IllegalArgumentException("password is required");
         this.name = name;
         this.email = email;
-        this.password = password;
+        this.password = passwordHash;
         this.role = role;
+    }
+
+    // Factory: anyone who registers themselves is a CUSTOMER
+    public static User registerCustomer(String name, String email, String passwordHash) {
+        return new User(name, email, passwordHash, Role.CUSTOMER);
+    }
+
+    // Factory: admin accounts are only created by the system (see DataLoader)
+    public static User createAdmin(String name, String email, String passwordHash) {
+        return new User(name, email, passwordHash, Role.ADMIN);
     }
 
     public Long getId() { return id; }
     public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
     public String getEmail() { return email; }
-    public void setEmail(String email) { this.email = email; }
     public String getPassword() { return password; }
-    public void setPassword(String password) { this.password = password; }
     public Role getRole() { return role; }
 }

@@ -13,7 +13,9 @@ public class LowStockPolicy {
 
     public LowStockPolicy(@Value("${inventory.low-stock-threshold}") int threshold) { this.threshold = threshold; }
 
-    public boolean isLow(StockChangedEvent level) { return level.stock() < threshold; }
+    public boolean isLow(int stock) { return stock < threshold; }
+
+    public boolean isLow(StockChangedEvent level) { return isLow(level.stock()); }
 
     public LowStockAlert alertFor(StockChangedEvent level) {
         return new LowStockAlert(level.productId(), level.name(), level.stock(), threshold);
