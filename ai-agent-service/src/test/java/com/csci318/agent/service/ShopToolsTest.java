@@ -16,8 +16,8 @@ import static org.mockito.Mockito.*;
 // The customer tools must only ever return data for the customer signed in to the chat session
 class ShopToolsTest {
 
-    private static final OrderInfo ALICES_ORDER = new OrderInfo(10L, 1L, 2L, 1, 29.99, "PAID");
-    private static final OrderInfo BOBS_ORDER = new OrderInfo(20L, 2L, 3L, 1, 9.99, "PAID");
+    private static final OrderInfo ALICES_ORDER = new OrderInfo(10L, 1L, 2L, 1, 29.99, "PAID", List.of());
+    private static final OrderInfo BOBS_ORDER = new OrderInfo(20L, 2L, 3L, 1, 9.99, "PAID", List.of());
 
     private final OrderClient orders = mock(OrderClient.class);
     private final CustomerClient customers = mock(CustomerClient.class);

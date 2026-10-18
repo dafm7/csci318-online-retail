@@ -33,7 +33,7 @@ function Dashboard({ adminId }: { adminId: number }) {
   const low = stock.filter(isLowStock)
   const revenue = (sales.data ?? []).reduce((s, x) => s + x.revenue, 0)
   const units = (sales.data ?? []).reduce((s, x) => s + x.unitsSold, 0)
-  const declined = (payments.data ?? []).filter(p => !p.success).length
+  const declined = (payments.data ?? []).filter(p => p.status === 'FAILED').length
 
   // Per-minute rows grouped by window, newest first
   const windows = new Map<string, { label: string; rows: { name: string; units: number }[] }>()
@@ -130,7 +130,7 @@ function Dashboard({ adminId }: { adminId: number }) {
                       <td className="id">#{p.id}</td>
                       <td className="id">#{p.orderId}</td>
                       <td className="num">{money(p.amount)}</td>
-                      <td><span className={`pill ${p.success ? 'pill-paid' : 'pill-failed'}`}>{p.success ? 'APPROVED' : 'DECLINED'}</span></td>
+                      <td><span className={`pill ${PAYMENT_PILL[p.status] ?? 'pill-pending'}`}>{PAYMENT_LABEL[p.status] ?? p.status}</span></td>
                     </tr>
                   ))}
                 </tbody>
@@ -221,6 +221,9 @@ function Restock({ adminId, stock, onDone }: { adminId: number; stock: StockLeve
     </section>
   )
 }
+
+const PAYMENT_LABEL: Record<string, string> = { PENDING: 'PENDING', SUCCESS: 'APPROVED', FAILED: 'DECLINED', REFUNDED: 'REFUNDED' }
+const PAYMENT_PILL: Record<string, string> = { PENDING: 'pill-pending', SUCCESS: 'pill-paid', FAILED: 'pill-failed', REFUNDED: 'pill-refunded' }
 
 function Err({ msg }: { msg: string | null }) {
   return msg ? <p className="error-text">{msg}</p> : null

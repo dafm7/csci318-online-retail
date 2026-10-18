@@ -47,8 +47,16 @@ curl http://localhost:8081/api/admin/products -H "X-User-Id: 1"   # all products
 curl -X POST http://localhost:8082/api/users/register -H "Content-Type: application/json" -d '{"name":"Alice","email":"alice@uow.edu.au","password":"secret123"}'
 curl -X POST http://localhost:8082/api/users/login -H "Content-Type: application/json" -d '{"email":"alice@uow.edu.au","password":"secret123"}'
 curl http://localhost:8082/api/users/2          # view profile (user 1 is the admin)
-curl -X POST http://localhost:8083/api/orders -H "Content-Type: application/json" -d '{"customerId":2,"productId":1,"quantity":2,"amount":59.98}'
-curl http://localhost:8083/api/orders/1      # status should become PAID
+curl -X POST http://localhost:8083/api/orders -H "Content-Type: application/json" -d '{"customerId":2,"items":[{"productId":1,"quantity":2},{"productId":2,"quantity":1}]}'
+curl -X POST http://localhost:8084/api/payments -H "Content-Type: application/json" -d '{"orderId":1,"paymentMethod":"mock-card"}'
+curl http://localhost:8083/api/orders/1      # status becomes PAID after the payment event
+# Then EITHER ship it (PAID -> SHIPPED -> DELIVERED)...
+curl -X PATCH http://localhost:8083/api/orders/1/status -H "Content-Type: application/json" -d '{"status":"SHIPPED"}'
+# ...OR cancel it (PENDING, PAID or FAILED orders; stock is put back) and refund the payment
+curl -X POST "http://localhost:8083/api/orders/1/cancel?customerId=2"
+curl -X POST http://localhost:8084/api/payments/orders/1/refund
+curl http://localhost:8083/api/orders/analysis/summary
+curl http://localhost:8084/api/payments/analysis/summary
 curl -X POST http://localhost:8085/api/chat -H "Content-Type: application/json" -d '{"message":"Do you sell keyboards?"}'
 # Keep talking in the same conversation by sending back the sessionId from the reply.
 # Add the customerId from login so the assistant can answer "where is my order?" for that customer only.
@@ -56,7 +64,8 @@ curl -X POST http://localhost:8085/api/chat -H "Content-Type: application/json" 
 curl -X DELETE http://localhost:8085/api/chat/<sessionId>      # forget a conversation
 
 # Real-time inventory (Kafka Streams) - order 12 keyboards (stock 20) to trigger a low-stock alert
-curl -X POST http://localhost:8083/api/orders -H "Content-Type: application/json" -d '{"customerId":2,"productId":2,"quantity":12,"amount":900}'
+curl -X POST http://localhost:8083/api/orders -H "Content-Type: application/json" -d '{"customerId":2,"items":[{"productId":2,"quantity":12}]}'
+curl -X POST http://localhost:8084/api/payments -H "Content-Type: application/json" -d '{"orderId":2,"paymentMethod":"mock-card"}'   # pay it so it counts in /api/sales
 curl http://localhost:8081/api/inventory              # live stock per product
 curl http://localhost:8081/api/inventory/low-stock    # products below the threshold (10)
 kafka-console-consumer --bootstrap-server localhost:9092 --topic low-stock-alerts --from-beginning

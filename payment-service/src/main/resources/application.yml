@@ -1,11 +1,14 @@
 server:
   port: 8084
 
+services:
+  order-url: http://localhost:8083
+
 spring:
   application:
     name: payment-service
   datasource:
-    url: jdbc:h2:mem:paymentservice
+    url: jdbc:h2:file:./target/paymentservice
     username: sa
     password:
   jpa:
@@ -16,13 +19,23 @@ spring:
     console:
       enabled: true      # http://localhost:8084/h2-console
   cloud:
+    function:
+      definition: registerPayment;paymentAnalysis
     stream:
+      output-bindings: paymentCompleted-out-0;paymentRefunded-out-0;paymentAnalysis-out-0
       kafka:
         binder:
           brokers: localhost:9092
       bindings:
-        processPayment-in-0:
+        registerPayment-in-0:
           destination: order-placed
           group: payment-service
-        processPayment-out-0:
+        paymentCompleted-out-0:
           destination: payment-completed
+        paymentRefunded-out-0:
+          destination: payment-refunded
+        paymentAnalysis-out-0:
+          destination: payment-analysis
+        paymentAnalysis-in-0:
+          destination: payment-analysis
+          group: payment-analysis-service

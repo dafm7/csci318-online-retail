@@ -279,6 +279,8 @@ button { cursor: pointer; }
 .pill-failed { background: var(--bad-soft); color: var(--bad); }
 .pill-pending { background: var(--amber-soft); color: var(--amber); }
 .pill-pending::before { animation: pulse 1s infinite; }
+.pill-shipped, .pill-delivered { background: var(--ok-soft); color: var(--ok); }
+.pill-cancelled, .pill-refunded { background: var(--rule); color: var(--muted); }
 
 .notice {
   display: flex;

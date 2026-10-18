@@ -9,7 +9,7 @@ export interface Product {
 }
 export type Role = 'CUSTOMER' | 'ADMIN'
 export interface Customer { id: number; name: string; email: string; role: Role }
-export type OrderStatus = 'PENDING' | 'PAID' | 'FAILED'
+export type OrderStatus = 'PENDING' | 'PAID' | 'FAILED' | 'CANCELLED' | 'SHIPPED' | 'DELIVERED' | 'REFUNDED'
 export interface Order { id: number; customerId: number; productId: number; quantity: number; amount: number; status: OrderStatus }
 export interface RecentOrder { orderId: number; productId: number; quantity: number; amount: number; status: OrderStatus }
 export interface CustomerProfile {
@@ -21,7 +21,8 @@ export interface CustomerProfile {
 export interface StockLevel { productId: number; name: string; stock: number; lowStockThreshold: number | null }
 export interface ProductSales { productId: number; name: string; unitsSold: number; revenue: number; orders: number }
 export interface MinuteSales { productId: number; name: string; windowStart: string; windowEnd: string; unitsSold: number }
-export interface Payment { id: number; orderId: number; amount: number; success: boolean }
+export type PaymentStatus = 'PENDING' | 'SUCCESS' | 'FAILED' | 'REFUNDED'
+export interface Payment { id: number; orderId: number; amount: number; success: boolean; status: PaymentStatus }
 export interface ChatResponse { sessionId: string; reply: string }
 
 export class ApiError extends Error {
@@ -80,7 +81,10 @@ export const api = {
   login: (email: string, password: string) => post<Customer>('/api/users/login', { email, password }),
   profile: (id: number) => request<CustomerProfile>(`/api/users/${id}`),
 
-  placeOrder: (o: { customerId: number; productId: number; quantity: number; amount: number }) => post<Order>('/api/orders', o),
+  // order-service prices the order from product-service and rejects unknown products or too little stock
+  placeOrder: (o: { customerId: number; productId: number; quantity: number }) => post<Order>('/api/orders', o),
+  // Payment is a separate step: order-service marks the order PAID/FAILED when the payment event arrives
+  pay: (orderId: number, paymentMethod = 'mock-card') => post<Payment>('/api/payments', { orderId, paymentMethod }),
   order: (id: number) => request<Order>(`/api/orders/${id}`),
   orders: (customerId?: number) => request<Order[]>(`/api/orders${customerId ? `?customerId=${customerId}` : ''}`),
 

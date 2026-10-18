@@ -23,12 +23,16 @@ spring:
   cloud:
     function:
       # reduceStock: normal Kafka consumer.  inventory, sales: Kafka Streams topologies
-      definition: reduceStock;inventory;sales
+      definition: reduceStock;restoreCancelledOrderStock;inventory;sales
     stream:
       bindings:
         # --- event-driven (normal Kafka binder) ---
         reduceStock-in-0:
           destination: order-placed
+          group: product-service
+          binder: kafka
+        restoreCancelledOrderStock-in-0:
+          destination: order-cancelled
           group: product-service
           binder: kafka
         stockChanged-out-0:

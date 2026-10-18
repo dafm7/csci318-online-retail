@@ -20,12 +20,12 @@ export default function CartPage() {
     setBusy(true)
     const results = await Promise.all(cart.map(async (line): Promise<Placed> => {
       try {
-        const order = await api.placeOrder({
-          customerId: customer.id,
-          productId: line.product.id,
-          quantity: line.quantity,
-          amount: Math.round(line.product.price * line.quantity * 100) / 100,
-        })
+        const order = await api.placeOrder({ customerId: customer.id, productId: line.product.id, quantity: line.quantity })
+        try {
+          await api.pay(order.id)
+        } catch (e) {
+          return { line, order, error: `Payment not taken: ${e instanceof Error ? e.message : String(e)}` }
+        }
         return { line, order }
       } catch (e) {
         return { line, error: e instanceof Error ? e.message : String(e) }
