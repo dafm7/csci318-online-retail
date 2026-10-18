@@ -38,7 +38,8 @@ class PaymentServiceTest {
 
     @Test void orderEventCreatesOnePendingPaymentAndDuplicateIsIgnored() {
         OrderPlacedEvent event = new OrderPlacedEvent(9L, 2L, 1L, 1, new BigDecimal("29.99"));
-        when(payments.findByOrderId(9L)).thenReturn(Optional.empty(), Optional.of(Payment.pending(9L, event.amount())));
+        when(payments.findByOrderId(9L)).thenReturn(Optional.empty()).thenReturn(Optional.of(Payment.pending(9L, event.amount())));
+        // when(payments.findByOrderId(9L)).thenReturn(Optional.empty(), Optional.of(Payment.pending(9L, event.amount())));
         service.registerOrder(event);
         service.registerOrder(event);
         verify(payments, times(1)).save(any(Payment.class));
