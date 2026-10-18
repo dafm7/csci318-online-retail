@@ -23,7 +23,7 @@ export default function App() {
         <div className="masthead-inner">
           <NavLink to="/" className="wordmark" aria-label="UOW Retail home">
             <span className="wordmark-serif">Retail</span>
-            <span className="wordmark-mono">UOW · 318</span>
+            <span className="wordmark-mono">UOW</span>
           </NavLink>
           <nav className="mainnav">
             <NavLink to="/" end>Shop</NavLink>
@@ -53,19 +53,6 @@ export default function App() {
           } />
         </Routes>
       </main>
-
-      <footer className="colophon">
-        <div className="colophon-inner">
-          <p className="display">Five services, <em>one shop.</em></p>
-          <ul className="services">
-            <li><b>product</b> :8081</li>
-            <li><b>user</b> :8082</li>
-            <li><b>order</b> :8083</li>
-            <li><b>payment</b> :8084</li>
-            <li><b>agent</b> :8085</li>
-          </ul>
-        </div>
-      </footer>
 
       <ChatPanel />
     </>

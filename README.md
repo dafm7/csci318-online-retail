@@ -7,9 +7,18 @@ Spring Boot 3.4 · JDK 21 · Spring Data JPA + H2 · Spring Cloud Stream (Kafka)
 1. Start Kafka:
    - Mac: brew install kafka && brew services start kafka
    - Windows: install Kafka in WSL and run it on localhost:9092
-2. Set your Gemini API key (free from https://aistudio.google.com/apikey):
+2. Set your Gemini API key (free from https://aistudio.google.com/apikey), in each terminal that runs `ai-agent-service`:
    - Mac/Linux: `export GEMINI_API_KEY=your-key`
    - Windows PowerShell: `$env:GEMINI_API_KEY="your-key"`
+
+   The key is only needed for the AI shop assistant (`ai-agent-service`, `/api/chat`). Every other service and the
+   frontend work without it; without a key the assistant replies "Sorry, I can't answer right now".
+
+   The assistant uses the model `gemini-3.8-flash`. If your key can't use that model (the `ai-agent-service` log
+   shows a model-not-found or permission error), pick another model from https://aistudio.google.com and set it
+   before starting the service:
+   - Mac/Linux: `export GEMINI_MODEL=model-name`
+   - Windows PowerShell: `$env:GEMINI_MODEL="model-name"`
 3. Build everything from the root folder:
    ```
    mvn clean package -DskipTests

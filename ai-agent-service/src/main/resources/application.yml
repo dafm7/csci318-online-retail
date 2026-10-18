@@ -24,7 +24,7 @@ spring:
 # Gemini settings, read by infrastructure/llm/GeminiConfig
 gemini:
   api-key: ${GEMINI_API_KEY:put-your-key-here}
-  model-name: gemini-3.8-flash
+  model-name: ${GEMINI_MODEL:gemini-3.8-flash}   # change without editing code: export GEMINI_MODEL=<model>
 
 # Where the REST clients in infrastructure/client find the other services
 services:

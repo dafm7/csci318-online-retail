@@ -65,7 +65,6 @@ function Dashboard({ adminId }: { adminId: number }) {
       <div className="admin-grid">
         <section className="panel span-7">
           <h2>Inventory</h2>
-          <p className="kicker">Kafka Streams · flagged below each product's threshold</p>
           <Err msg={inventory.error} />
           {stock.length === 0 && !inventory.loading && !inventory.error && <p className="muted">No stock data yet.</p>}
           <ul className="bars">
