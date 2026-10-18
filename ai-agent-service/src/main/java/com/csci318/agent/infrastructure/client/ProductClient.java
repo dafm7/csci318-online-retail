@@ -21,6 +21,14 @@ public class ProductClient {
         return List.of(api.get().uri("?search={k}", keyword).retrieve().body(ProductInfo[].class));
     }
 
+    public List<ProductInfo> inCategory(String category) {
+        return List.of(api.get().uri("?category={c}", category).retrieve().body(ProductInfo[].class));
+    }
+
+    public ProductInfo get(Long productId) {
+        return api.get().uri("/{id}", productId).retrieve().body(ProductInfo.class);
+    }
+
     public List<ProductInfo> all() {
         return List.of(api.get().retrieve().body(ProductInfo[].class));
     }
