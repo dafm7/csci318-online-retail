@@ -25,7 +25,7 @@ langchain4j:
   google-ai-gemini:
     chat-model:
       api-key: ${GEMINI_API_KEY:put-your-key-here}
-      model-name: gemini-2.5-flash
+      model-name: gemini-3.8-flash
 
 # Where the REST clients in infrastructure/client find the other services
 services:

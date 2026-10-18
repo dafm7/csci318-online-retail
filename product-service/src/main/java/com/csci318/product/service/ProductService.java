@@ -3,6 +3,7 @@ package com.csci318.product.service;
 import com.csci318.product.domain.Category;
 import com.csci318.product.domain.Product;
 import com.csci318.product.domain.event.OrderPlacedEvent;
+import com.csci318.product.domain.event.OrderCancelledEvent;
 import com.csci318.product.infrastructure.messaging.StockEventPublisher;
 import com.csci318.product.infrastructure.persistence.ProductRepository;
 import org.springframework.data.domain.Sort;
@@ -102,16 +103,37 @@ public class ProductService {
 
     // Called for every OrderPlacedEvent: reduce stock and announce the new level
     public void reduceStockForOrder(OrderPlacedEvent event) {
-        repo.findById(event.productId()).ifPresent(p -> {
-            if (!p.hasStock(event.quantity())) {
-                System.out.println("[product-service] NOT ENOUGH STOCK for product " + p.getId()
-                        + " (order " + event.orderId() + "): " + p.getStock() + " left, " + event.quantity() + " requested");
+        var lines = event.lines();
+        var products = new java.util.LinkedHashMap<Product, Integer>();
+        for (var line : lines) {
+            Product p = repo.findById(line.productId()).orElse(null);
+            if (p == null || !p.hasStock(line.quantity())) {
+                System.out.println("[product-service] unable to reserve product " + line.productId()
+                        + " for order " + event.orderId() + "; order was accepted against an earlier stock snapshot");
                 return;
             }
-            p.reduceStock(event.quantity());
+            products.merge(p, line.quantity(), Integer::sum);
+        }
+        for (var entry : products.entrySet()) {
+            Product p = entry.getKey();
+            if (!p.hasStock(entry.getValue())) {
+                System.out.println("[product-service] insufficient stock for product " + p.getId() + " in order " + event.orderId());
+                return;
+            }
+        }
+        for (var entry : products.entrySet()) {
+            Product p = entry.getKey();
+            p.reduceStock(entry.getValue());
             repo.save(p);
             publisher.stockChanged(p);
-            System.out.println("[product-service] stock reduced for product " + p.getId() + " -> " + p.getStock());
+        }
+    }
+
+    public void restoreStockForCancelledOrder(OrderCancelledEvent event) {
+        for (var line : event.lines()) repo.findById(line.productId()).ifPresent(p -> {
+            p.restock(line.quantity());
+            repo.save(p);
+            publisher.stockChanged(p);
         });
     }
 

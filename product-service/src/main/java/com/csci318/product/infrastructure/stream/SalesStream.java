@@ -2,6 +2,7 @@ package com.csci318.product.infrastructure.stream;
 
 import com.csci318.product.domain.ProductSales;
 import com.csci318.product.domain.event.OrderPlacedEvent;
+import com.csci318.product.domain.event.OrderLineEvent;
 import com.csci318.product.domain.event.PaymentCompletedEvent;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.common.utils.Bytes;
@@ -37,14 +38,16 @@ public class SalesStream {
                             StreamJoined.with(Serdes.String(), orderSerde, paymentSerde))
                     .filter((orderId, order) -> order != null);
 
-            // Re-key paid orders by product so they can be grouped per product
-            KGroupedStream<String, OrderPlacedEvent> paidByProduct = paidOrders
-                    .selectKey((orderId, o) -> String.valueOf(o.productId()))
-                    .groupByKey(Grouped.with(Serdes.String(), orderSerde));
+            // Expand each paid order into product lines before aggregating sales.
+            JsonSerde<OrderLineEvent> lineSerde = new JsonSerde<>(OrderLineEvent.class);
+            KGroupedStream<String, OrderLineEvent> paidByProduct = paidOrders
+                    .flatMapValues(OrderPlacedEvent::lines)
+                    .selectKey((orderId, line) -> String.valueOf(line.productId()))
+                    .groupByKey(Grouped.with(Serdes.String(), lineSerde));
 
             // 2. AGGREGATE: running units sold, revenue and order count per product
             paidByProduct.aggregate(ProductSales::none,
-                    (productId, order, totals) -> totals.add(order),
+                    (productId, line, totals) -> totals.add(line),
                     Materialized.<String, ProductSales, KeyValueStore<Bytes, byte[]>>as(SALES_STORE)
                             .withKeySerde(Serdes.String())
                             .withValueSerde(new JsonSerde<>(ProductSales.class)))
@@ -55,7 +58,7 @@ public class SalesStream {
             // 3. WINDOW: units sold per product in each 1-minute tumbling window
             paidByProduct.windowedBy(TimeWindows.ofSizeWithNoGrace(Duration.ofMinutes(1)))
                     .aggregate(() -> 0L,
-                            (productId, order, units) -> units + order.quantity(),
+                            (productId, line, units) -> units + line.quantity(),
                             Materialized.<String, Long, WindowStore<Bytes, byte[]>>as(UNITS_PER_MINUTE_STORE)
                                     .withKeySerde(Serdes.String())
                                     .withValueSerde(Serdes.Long()));

@@ -3,11 +3,14 @@ server:
   error:
     include-message: always
 
+services:
+  product-url: http://localhost:8081
+
 spring:
   application:
     name: order-service
   datasource:
-    url: jdbc:h2:mem:orderservice
+    url: jdbc:h2:file:./target/orderservice
     username: sa
     password:
   jpa:
@@ -18,13 +21,26 @@ spring:
     console:
       enabled: true      # http://localhost:8083/h2-console
   cloud:
+    function:
+      definition: paymentCompleted;paymentRefunded;orderAnalysis
     stream:
+      output-bindings: orderPlaced-out-0;orderCancelled-out-0;orderAnalysis-out-0
       kafka:
         binder:
           brokers: localhost:9092
       bindings:
         orderPlaced-out-0:
           destination: order-placed
+        orderCancelled-out-0:
+          destination: order-cancelled
         paymentCompleted-in-0:
           destination: payment-completed
           group: order-service
+        paymentRefunded-in-0:
+          destination: payment-refunded
+          group: order-service
+        orderAnalysis-out-0:
+          destination: order-analysis
+        orderAnalysis-in-0:
+          destination: order-analysis
+          group: order-analysis-service
