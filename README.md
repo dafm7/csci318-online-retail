@@ -53,6 +53,21 @@ curl http://localhost:8081/api/sales                       # units sold, revenue
 curl "http://localhost:8081/api/sales/per-minute?minutes=5" # units sold per product per minute
 ```
 
+## Web frontend (React)
+
+`frontend/` is a Vite + React + TypeScript web shop: product browsing, cart and checkout, sign in / register,
+account page with order history, an admin dashboard (live inventory, sales, payments, add product) and the
+shop assistant as a chat panel. Needs Node 18+. With the services running:
+
+```
+cd frontend
+npm install
+npm run dev        # http://localhost:5173
+```
+
+The dev server proxies each `/api/...` path to the right service port (see `frontend/vite.config.ts`),
+so no CORS setup is needed on the backend. See `plan.md` for the design notes.
+
 ## Chat with the shop assistant (desktop window)
 
 `chat-client` is a small Java Swing app for talking to the assistant. With the services running, start it with
