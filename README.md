@@ -67,78 +67,126 @@ The assistant uses the model `gemini-3.8-flash`. If your key can't use that mode
 a model-not-found or permission error), choose another model from https://aistudio.google.com and set it too:
 `export GEMINI_MODEL=model-name` (PowerShell: `$env:GEMINI_MODEL="model-name"`).
 
-## Try it (REST)
+## Sample inputs (use cases)
 
-Run these in order with the services running. Product ids 1–5 are the sample products created on startup
-(1 Wireless Mouse $29.99, 2 Mechanical Keyboard $119, 3 Running Shoes $89.50, 4 Coffee Mug $12, 5 Hoodie $49.95).
+Sample inputs that demonstrate each use case. Run them in order on a fresh start (see *Data and resetting*): the
+ids below assume the admin is user 1, the first registered customer is user 2, and the 5 sample products have ids
+1–5 (1 Wireless Mouse $29.99, 2 Mechanical Keyboard $119, 3 Running Shoes $89.50, 4 Coffee Mug $12, 5 Hoodie $49.95).
+Sample outputs for each use case are in [USER_STORIES.md](USER_STORIES.md). It also shows error cases (for example a
+declined payment), so its later order ids are one higher than here.
 
-**Users**
+### User Service
+
+**Customer Registration**
 ```
 curl -X POST http://localhost:8082/api/users/register -H "Content-Type: application/json" -d '{"name":"Alice","email":"alice@uow.edu.au","password":"secret123"}'
+```
+
+**User Login (Admin + Customer)**
+```
 curl -X POST http://localhost:8082/api/users/login -H "Content-Type: application/json" -d '{"email":"alice@uow.edu.au","password":"secret123"}'
-curl http://localhost:8082/api/users/2                     # profile with order summary
+curl -X POST http://localhost:8082/api/users/login -H "Content-Type: application/json" -d '{"email":"admin@shop.com","password":"admin123"}'
 ```
 
-**Products** (search, filter and sort can be combined)
+**View Profile** (with a summary of the customer's orders)
 ```
-curl http://localhost:8081/api/products
-curl "http://localhost:8081/api/products?search=key"
-curl "http://localhost:8081/api/products?category=electronics"     # CLOTHES, ELECTRONICS, SPORTS, HOME
-curl "http://localhost:8081/api/products?minPrice=20&maxPrice=100&inStock=true&sort=price"   # sort: price, price_desc, name, name_desc, stock, stock_desc
-curl http://localhost:8081/api/products/categories
+curl http://localhost:8082/api/users/2
 ```
 
-**Admin** (send the admin's user id in `X-User-Id`; customers get 403)
+### Product Service
+
+**Add Product (Admin)** (the admin's user id goes in `X-User-Id`; a customer gets 403)
 ```
 curl -X POST http://localhost:8081/api/products -H "Content-Type: application/json" -H "X-User-Id: 1" -d '{"name":"Gaming Headset","category":"ELECTRONICS","price":79.95,"stock":15,"lowStockThreshold":5}'
 curl -X POST http://localhost:8081/api/products/6/restock -H "Content-Type: application/json" -H "X-User-Id: 1" -d '{"quantity":10}'
-curl http://localhost:8081/api/admin/products -H "X-User-Id: 1"   # all products grouped by category
 ```
 
-**Order and pay** (payment is a separate step; the order is priced from product-service)
+**Retrieve Product List and Details (Admin)**
+```
+curl http://localhost:8081/api/admin/products -H "X-User-Id: 1"
+curl http://localhost:8081/api/products/6
+```
+
+**Search and Filter Products (Customer)** (filters can be combined)
+```
+curl "http://localhost:8081/api/products?search=key"
+curl "http://localhost:8081/api/products?category=electronics&maxPrice=100&inStock=true&sort=price"
+curl http://localhost:8081/api/products/categories
+```
+Categories: `CLOTHES`, `ELECTRONICS`, `SPORTS`, `HOME`. Sort: `price`, `price_desc`, `name`, `name_desc`, `stock`, `stock_desc`.
+
+### Order Service
+
+**Create Order** (several items; priced and stock-checked by Product Service)
 ```
 curl -X POST http://localhost:8083/api/orders -H "Content-Type: application/json" -d '{"customerId":2,"items":[{"productId":1,"quantity":2},{"productId":2,"quantity":1}]}'
-curl -X POST http://localhost:8084/api/payments -H "Content-Type: application/json" -d '{"orderId":1,"paymentMethod":"mock-card"}'
-curl http://localhost:8083/api/orders/1                    # PENDING, then PAID once the payment event arrives
-curl "http://localhost:8083/api/orders?customerId=2"       # the customer's orders
-curl http://localhost:8084/api/payments                    # all payments
 ```
 
-**After payment**: either ship the order...
+**View Order History**
+```
+curl "http://localhost:8083/api/orders?customerId=2"
+curl http://localhost:8083/api/orders/1
+```
+
+### Payment Service
+
+**Process Payment** (payment is a separate step after creating the order; up to $1000 succeeds)
+```
+curl -X POST http://localhost:8084/api/payments -H "Content-Type: application/json" -d '{"orderId":1,"paymentMethod":"mock-card"}'
+```
+
+**Confirm Payment + Real-time Payment Analysis (via Kafka)** (the `payment-completed` event marks the order PAID)
+```
+curl http://localhost:8083/api/orders/1
+curl http://localhost:8084/api/payments
+curl http://localhost:8084/api/payments/analysis/summary
+curl http://localhost:8081/api/sales
+curl "http://localhost:8081/api/sales/per-minute?minutes=5"
+```
+
+### Product + Order Service
+
+**Real-time Inventory Update (via Kafka)** (12 keyboards takes stock from 19 to 7, below its threshold of 10)
+```
+curl http://localhost:8081/api/inventory/2
+curl -X POST http://localhost:8083/api/orders -H "Content-Type: application/json" -d '{"customerId":2,"items":[{"productId":2,"quantity":12}]}'
+curl http://localhost:8081/api/inventory/2
+curl http://localhost:8081/api/inventory/low-stock
+kafka-console-consumer --bootstrap-server localhost:9092 --topic low-stock-alerts --from-beginning
+```
+
+**Cancel Order** (order 2 from the step above; stock is returned)
+```
+curl -X POST "http://localhost:8083/api/orders/2/cancel?customerId=2"
+curl http://localhost:8081/api/inventory/2
+```
+
+**Update Order Status + Real-time Order Analysis (via Kafka)** (PAID → SHIPPED → DELIVERED)
 ```
 curl -X PATCH http://localhost:8083/api/orders/1/status -H "Content-Type: application/json" -d '{"status":"SHIPPED"}'
 curl -X PATCH http://localhost:8083/api/orders/1/status -H "Content-Type: application/json" -d '{"status":"DELIVERED"}'
-```
-...or cancel it (PENDING, PAID or FAILED orders; stock is put back) and refund the payment:
-```
-curl -X POST "http://localhost:8083/api/orders/1/cancel?customerId=2"
-curl -X POST http://localhost:8084/api/payments/orders/1/refund
+curl http://localhost:8083/api/orders/analysis/summary
 ```
 
-**Real-time analysis (Kafka Streams)**
-```
-# Low-stock alert: 12 keyboards takes stock from 19 to 7, below its threshold of 10.
-# (12 x $119 = $1428 is over the $1000 payment limit, so paying it would be declined: it is left unpaid here.)
-curl -X POST http://localhost:8083/api/orders -H "Content-Type: application/json" -d '{"customerId":2,"items":[{"productId":2,"quantity":12}]}'
-curl http://localhost:8081/api/inventory                   # live stock per product
-curl http://localhost:8081/api/inventory/low-stock         # products below their own threshold
-kafka-console-consumer --bootstrap-server localhost:9092 --topic low-stock-alerts --from-beginning
+### Payment + Order Service
 
-curl http://localhost:8081/api/sales                       # units sold, revenue, orders per product (paid orders only)
-curl "http://localhost:8081/api/sales/per-minute?minutes=5"    # units sold per product, 1-minute tumbling windows
-curl http://localhost:8083/api/orders/analysis/summary     # orders per status, cancellation rate, last minute (hopping window)
-curl http://localhost:8084/api/payments/analysis/summary   # payments per status, success rate, amount paid, last minute
+**Handle Refund** (a new paid order, then refunded; the `payment-refunded` event marks it REFUNDED)
+```
+curl -X POST http://localhost:8083/api/orders -H "Content-Type: application/json" -d '{"customerId":2,"items":[{"productId":4,"quantity":1}]}'
+curl -X POST http://localhost:8084/api/payments -H "Content-Type: application/json" -d '{"orderId":3,"paymentMethod":"mock-card"}'
+curl -X POST http://localhost:8084/api/payments/orders/3/refund
+curl http://localhost:8083/api/orders/3
 ```
 
-**AI assistant** (needs `GEMINI_API_KEY`)
+### Extras
+
+**AI shop assistant** (needs `GEMINI_API_KEY`)
 ```
 curl -X POST http://localhost:8085/api/chat -H "Content-Type: application/json" -d '{"message":"Do you sell keyboards?"}'
-# Send back the sessionId from the reply to continue the conversation; add customerId to ask about that customer's orders
-curl -X POST http://localhost:8085/api/chat -H "Content-Type: application/json" -d '{"sessionId":"<sessionId>","customerId":2,"message":"What is the status of my latest order?"}'
-curl -X DELETE http://localhost:8085/api/chat/<sessionId>  # forget the conversation
+curl -X POST http://localhost:8085/api/chat -H "Content-Type: application/json" -d '{"sessionId":"<sessionId from the reply>","customerId":2,"message":"What is the status of my latest order?"}'
 ```
 
-**Watch the events** (one terminal per topic)
+**Watch the Kafka events** (one terminal per topic)
 ```
 kafka-console-consumer --bootstrap-server localhost:9092 --topic order-placed
 kafka-console-consumer --bootstrap-server localhost:9092 --topic payment-completed
