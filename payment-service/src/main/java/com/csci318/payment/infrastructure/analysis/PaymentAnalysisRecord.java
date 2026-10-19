@@ -1,7 +1,7 @@
 package com.csci318.payment.infrastructure.analysis;
 
 import com.csci318.payment.domain.event.PaymentAnalysisEvent;
-import jakarta.persistence.Column;
+// import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
