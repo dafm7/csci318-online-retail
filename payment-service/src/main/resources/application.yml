@@ -20,22 +20,36 @@ spring:
       enabled: true      # http://localhost:8084/h2-console
   cloud:
     function:
-      definition: registerPayment;paymentAnalysis
+      # registerPayment: normal Kafka consumer.  paymentAnalytics: Kafka Streams topology
+      definition: registerPayment;paymentAnalytics
     stream:
       output-bindings: paymentCompleted-out-0;paymentRefunded-out-0;paymentAnalysis-out-0
       kafka:
         binder:
           brokers: localhost:9092
+        streams:
+          binder:
+            brokers: localhost:9092
+            functions:
+              paymentAnalytics:
+                applicationId: payment-analytics
+            configuration:
+              commit.interval.ms: 1000   # flush results every second (real-time dashboard)
       bindings:
+        # --- event-driven (normal Kafka binder) ---
         registerPayment-in-0:
           destination: order-placed
           group: payment-service
+          binder: kafka
         paymentCompleted-out-0:
           destination: payment-completed
+          binder: kafka
         paymentRefunded-out-0:
           destination: payment-refunded
+          binder: kafka
         paymentAnalysis-out-0:
           destination: payment-analysis
-        paymentAnalysis-in-0:
+          binder: kafka
+        # --- stream processing (Kafka Streams binder) ---
+        paymentAnalytics-in-0:
           destination: payment-analysis
-          group: payment-analysis-service

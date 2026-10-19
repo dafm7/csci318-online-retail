@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import { useStore } from './store'
+import { api, ApiError } from './api'
 import ShopPage from './pages/ShopPage'
 import CartPage from './pages/CartPage'
 import LoginPage from './pages/LoginPage'
@@ -10,11 +11,18 @@ import ChatPanel from './components/ChatPanel'
 import Ticker from './components/Ticker'
 
 export default function App() {
-  const { customer, cart } = useStore()
+  const { customer, cart, signOut } = useStore()
   const items = cart.reduce((n, l) => n + l.quantity, 0)
   const { pathname } = useLocation()
 
   useEffect(() => { window.scrollTo(0, 0) }, [pathname])
+
+  // The sign-in is remembered in the browser, but user-service starts empty after a restart:
+  // sign out if the remembered user no longer exists, so orders aren't placed for an unknown customer
+  useEffect(() => {
+    if (!customer) return
+    api.profile(customer.id).catch(e => { if (e instanceof ApiError && e.status === 404) signOut() })
+  }, [customer?.id])
 
   return (
     <>

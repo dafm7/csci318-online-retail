@@ -26,12 +26,7 @@ export default function ShopPage() {
   return (
     <>
       <section className="shop-head">
-        <p className="kicker">
-          <span>The catalogue</span>
-          <span>{today}</span>
-          <span>{all.data ? `${all.data.length} items` : '—'}</span>
-        </p>
-        <h1 className="display">Good things,<br /><em>in stock now.</em></h1>
+
         <label className="field search">
           <span>Search</span>
           <input type="search" placeholder="keyboard, mug, shoes…" value={search} onChange={e => setSearch(e.target.value)} />

@@ -22,25 +22,40 @@ spring:
       enabled: true      # http://localhost:8083/h2-console
   cloud:
     function:
-      definition: paymentCompleted;paymentRefunded;orderAnalysis
+      # paymentCompleted, paymentRefunded: normal Kafka consumers.  orderAnalytics: Kafka Streams topology
+      definition: paymentCompleted;paymentRefunded;orderAnalytics
     stream:
       output-bindings: orderPlaced-out-0;orderCancelled-out-0;orderAnalysis-out-0
       kafka:
         binder:
           brokers: localhost:9092
+        streams:
+          binder:
+            brokers: localhost:9092
+            functions:
+              orderAnalytics:
+                applicationId: order-analytics
+            configuration:
+              commit.interval.ms: 1000   # flush results every second (real-time dashboard)
       bindings:
+        # --- event-driven (normal Kafka binder) ---
         orderPlaced-out-0:
           destination: order-placed
+          binder: kafka
         orderCancelled-out-0:
           destination: order-cancelled
+          binder: kafka
+        orderAnalysis-out-0:
+          destination: order-analysis
+          binder: kafka
         paymentCompleted-in-0:
           destination: payment-completed
           group: order-service
+          binder: kafka
         paymentRefunded-in-0:
           destination: payment-refunded
           group: order-service
-        orderAnalysis-out-0:
+          binder: kafka
+        # --- stream processing (Kafka Streams binder) ---
+        orderAnalytics-in-0:
           destination: order-analysis
-        orderAnalysis-in-0:
-          destination: order-analysis
-          group: order-analysis-service

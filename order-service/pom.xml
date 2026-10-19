@@ -11,6 +11,20 @@
 
     <artifactId>order-service</artifactId>
 
+    <dependencies>
+        <!-- Kafka Streams (real-time order analysis) through Spring Cloud Stream -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-stream-binder-kafka-streams</artifactId>
+        </dependency>
+        <!-- Runs the stream topology in unit tests without a Kafka broker -->
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-streams-test-utils</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
     <build>
         <plugins>
             <plugin>

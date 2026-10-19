@@ -239,6 +239,7 @@ button { cursor: pointer; }
 .btn-ink { background: var(--ink); color: var(--paper); }
 .btn-ink:hover:not(:disabled) { background: var(--signal); border-color: var(--signal); color: var(--on-signal); }
 .btn-wide { width: 100%; }
+.btn-sm { padding: 6px 14px; font-size: .8rem; gap: 6px; }
 .btn:disabled { opacity: .4; cursor: not-allowed; }
 .btn .arrow { transition: transform .25s var(--ease); }
 .btn:hover:not(:disabled) .arrow { transform: translateX(4px); }
@@ -562,6 +563,10 @@ button { cursor: pointer; }
 .ledger .num { text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 .ledger .id { font-family: var(--font-mono); color: var(--muted); }
 .ledger .name { font: 400 20px/1.1 var(--font-display); }
+.ledger .items { font-size: .9rem; max-width: 34ch; }
+.ledger .row-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; padding-right: 0; }
+.figures.compact { margin-bottom: 16px; }
+.figures.compact .figure strong { font-size: clamp(28px, 3.4vw, 40px); }
 .ledger tbody tr { transition: background .15s; }
 .ledger tbody tr:hover { background: color-mix(in srgb, var(--paper-2) 60%, transparent); }
 .table-wrap { overflow-x: auto; }

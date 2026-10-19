@@ -10,7 +10,11 @@ export interface Product {
 export type Role = 'CUSTOMER' | 'ADMIN'
 export interface Customer { id: number; name: string; email: string; role: Role }
 export type OrderStatus = 'PENDING' | 'PAID' | 'FAILED' | 'CANCELLED' | 'SHIPPED' | 'DELIVERED' | 'REFUNDED'
-export interface Order { id: number; customerId: number; productId: number; quantity: number; amount: number; status: OrderStatus }
+export interface OrderItem { productId: number; quantity: number; unitPrice: number }
+export interface Order {
+  id: number; customerId: number; productId: number; quantity: number; amount: number; status: OrderStatus
+  items?: OrderItem[]; createdAt?: string; refundedAt?: string | null
+}
 export interface RecentOrder { orderId: number; productId: number; quantity: number; amount: number; status: OrderStatus }
 export interface CustomerProfile {
   id: number; name: string; email: string; role: Role
@@ -24,6 +28,14 @@ export interface MinuteSales { productId: number; name: string; windowStart: str
 export type PaymentStatus = 'PENDING' | 'SUCCESS' | 'FAILED' | 'REFUNDED'
 export interface Payment { id: number; orderId: number; amount: number; success: boolean; status: PaymentStatus }
 export interface ChatResponse { sessionId: string; reply: string }
+export interface OrderAnalysis {
+  totalOrders: number; statusCounts: Record<string, number>; cancellationRate: number
+  ordersLastMinute: number; cancelledLastMinute: number; statusChangesLastMinute: number
+}
+export interface PaymentAnalysis {
+  totalPayments: number; statusCounts: Record<string, number>; successRate: number
+  totalAmount: number; paymentUpdatesLastMinute: number
+}
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) { super(message) }
@@ -52,7 +64,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 function defaultMessage(status: number, error?: string): string {
   if (status === 401) return 'Invalid email or password'
   if (status === 403) return 'Only admins can do this'
-  if (status === 409) return 'That email is already registered'
+  if (status === 409) return 'Not allowed for this order right now'
   if (status === 404) return 'Not found'
   if (status >= 500) return 'The service is unavailable. Is it running?'
   return error || `Request failed (${status})`
@@ -81,8 +93,15 @@ export const api = {
   login: (email: string, password: string) => post<Customer>('/api/users/login', { email, password }),
   profile: (id: number) => request<CustomerProfile>(`/api/users/${id}`),
 
-  // order-service prices the order from product-service and rejects unknown products or too little stock
-  placeOrder: (o: { customerId: number; productId: number; quantity: number }) => post<Order>('/api/orders', o),
+  // One order with several items; order-service prices it from product-service and rejects unknown products or too little stock
+  placeOrder: (customerId: number, items: { productId: number; quantity: number }[]) => post<Order>('/api/orders', { customerId, items }),
+  cancelOrder: (orderId: number, customerId: number) =>
+    request<Order>(`/api/orders/${orderId}/cancel?customerId=${customerId}`, { method: 'POST' }),
+  setOrderStatus: (orderId: number, status: 'SHIPPED' | 'DELIVERED') =>
+    request<Order>(`/api/orders/${orderId}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+  refund: (orderId: number) => request<unknown>(`/api/payments/orders/${orderId}/refund`, { method: 'POST' }),
+  orderAnalysis: () => request<OrderAnalysis>('/api/orders/analysis/summary'),
+  paymentAnalysis: () => request<PaymentAnalysis>('/api/payments/analysis/summary'),
   // Payment is a separate step: order-service marks the order PAID/FAILED when the payment event arrives
   pay: (orderId: number, paymentMethod = 'mock-card') => post<Payment>('/api/payments', { orderId, paymentMethod }),
   order: (id: number) => request<Order>(`/api/orders/${id}`),

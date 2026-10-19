@@ -1,47 +1,59 @@
 package com.csci318.order.infrastructure.analysis;
 
-import com.csci318.order.domain.event.OrderAnalysisEvent;
+import org.apache.kafka.streams.errors.InvalidStateStoreException;
+import org.apache.kafka.streams.state.KeyValueIterator;
+import org.apache.kafka.streams.state.WindowStoreIterator;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
-import java.time.Instant;
-import java.util.*;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+import static com.csci318.order.infrastructure.stream.OrderAnalysisStream.*;
+
+// Order analysis summary, read from the Kafka Streams state stores (updated as each order event arrives)
 @Component
 public class OrderAnalysisMetrics {
-    private final OrderAnalysisRecordRepository records;
 
-    public OrderAnalysisMetrics(OrderAnalysisRecordRepository records) { this.records = records; }
+    private final OrderAnalysisStores stores;
 
-    @Transactional
-    public void accept(OrderAnalysisEvent event) {
-        if (event == null || event.eventId() == null || event.orderId() == null
-                || event.eventType() == null || event.status() == null || event.occurredAt() == null) return;
-        if (records.existsById(event.eventId())) return;
-        records.save(new OrderAnalysisRecord(event));
+    public OrderAnalysisMetrics(OrderAnalysisStores stores) { this.stores = stores; }
+
+    public Map<String, Object> snapshot() { return snapshot(Instant.now()); }
+
+    public Map<String, Object> snapshot(Instant now) {
+        try {
+            Map<String, Long> counts = new LinkedHashMap<>();
+            try (KeyValueIterator<String, Long> it = stores.ordersPerStatus().all()) {
+                it.forEachRemaining(kv -> { if (kv.value != null && kv.value > 0) counts.put(kv.key, kv.value); });
+            }
+            long total = counts.values().stream().mapToLong(Long::longValue).sum();
+            // A cancelled order stays CANCELLED (even after a refund), so this counts every cancelled order
+            long cancelled = counts.getOrDefault("CANCELLED", 0L);
+            long windowStart = lastMinuteWindowStart(now);
+            return Map.of("totalOrders", total, "statusCounts", counts,
+                    "cancellationRate", total == 0 ? 0.0 : (double) cancelled / total,
+                    "ordersLastMinute", countInWindow(CREATED, windowStart),
+                    "cancelledLastMinute", countInWindow(CANCELLED, windowStart),
+                    "statusChangesLastMinute", countInWindow(STATUS_CHANGE, windowStart));
+        } catch (InvalidStateStoreException e) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "order analysis stream is starting, try again in a few seconds");
+        }
     }
 
-    @Transactional(readOnly = true)
-    public Map<String, Object> snapshot() {
-        List<OrderAnalysisRecord> all = records.findAllByOrderByOccurredAtAscEventIdAsc();
-        Map<Long, String> currentStatuses = new HashMap<>();
-        Set<Long> createdOrders = new HashSet<>();
-        Set<Long> cancelledOrders = new HashSet<>();
-        for (OrderAnalysisRecord event : all) {
-            if ("ORDER_CREATED".equals(event.getEventType())) createdOrders.add(event.getOrderId());
-            if ("ORDER_CANCELLED".equals(event.getEventType())) cancelledOrders.add(event.getOrderId());
-            currentStatuses.put(event.getOrderId(), event.getStatus());
-        }
-        Map<String, Long> counts = new LinkedHashMap<>();
-        currentStatuses.values().forEach(status -> counts.merge(status, 1L, Long::sum));
+    // The hopping window that covers the most of the last 60 seconds: the oldest window that is still open
+    static long lastMinuteWindowStart(Instant now) {
+        long size = WINDOW_SIZE.toMillis(), advance = WINDOW_ADVANCE.toMillis();
+        return Math.floorDiv(now.toEpochMilli() - size, advance) * advance + advance;
+    }
 
-        Instant cutoff = Instant.now().minusSeconds(60);
-        List<OrderAnalysisRecord> recent = records.findAllByOccurredAtAfter(cutoff);
-        long createdLastMinute = recent.stream().filter(e -> "ORDER_CREATED".equals(e.getEventType())).count();
-        long cancelledLastMinute = recent.stream().filter(e -> "ORDER_CANCELLED".equals(e.getEventType())).count();
-        long changesLastMinute = recent.stream().filter(e -> !"ORDER_CREATED".equals(e.getEventType())).count();
-        return Map.of("totalOrders", (long) createdOrders.size(), "statusCounts", counts,
-                "cancellationRate", createdOrders.isEmpty() ? 0.0 : (double) cancelledOrders.size() / createdOrders.size(),
-                "ordersLastMinute", createdLastMinute, "cancelledLastMinute", cancelledLastMinute,
-                "statusChangesLastMinute", changesLastMinute);
+    private long countInWindow(String key, long windowStart) {
+        long total = 0;
+        try (WindowStoreIterator<Long> it = stores.eventsPerWindow().fetch(key, Instant.ofEpochMilli(windowStart), Instant.ofEpochMilli(windowStart))) {
+            while (it.hasNext()) total += it.next().value;
+        }
+        return total;
     }
 }

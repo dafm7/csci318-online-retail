@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { api, money, isLowStock, CATEGORIES, categoryLabel, type Category, type StockLevel } from '../api'
+import { api, money, isLowStock, CATEGORIES, categoryLabel, type Category, type Order, type Payment, type Product, type StockLevel } from '../api'
+import { canRefund, describeItems } from '../orderActions'
+import StatusBadge from '../components/StatusBadge'
 import { useStore } from '../store'
 import { useAsync } from '../useAsync'
 
@@ -27,6 +29,10 @@ function Dashboard({ adminId }: { adminId: number }) {
   const sales = useAsync(api.sales, [], REFRESH_MS)
   const perMinute = useAsync(() => api.salesPerMinute(5), [], REFRESH_MS)
   const payments = useAsync(api.payments, [], REFRESH_MS)
+  const orders = useAsync(() => api.orders(), [], REFRESH_MS)
+  const products = useAsync(() => api.products(), [], REFRESH_MS)
+  const orderStats = useAsync(api.orderAnalysis, [], REFRESH_MS)
+  const paymentStats = useAsync(api.paymentAnalysis, [], REFRESH_MS)
 
   const stock = [...(inventory.data ?? [])].sort((a, b) => a.stock - b.stock)
   const maxStock = Math.max(1, ...stock.map(s => s.stock))
@@ -139,6 +145,22 @@ function Dashboard({ adminId }: { adminId: number }) {
           )}
         </section>
 
+        <OrdersPanel orders={orders.data} products={products.data} payments={payments.data} error={orders.error}
+          onChanged={() => { orders.reload(); payments.reload(); orderStats.reload(); paymentStats.reload() }} />
+        <section className="panel wide">
+          <h2>Order &amp; payment analysis</h2>
+          <Err msg={orderStats.error ?? paymentStats.error} />
+          <div className="figures compact">
+            <div className="figure"><span className="kicker">Orders</span><strong>{orderStats.data?.totalOrders ?? '–'}</strong></div>
+            <div className="figure"><span className="kicker">Cancellation rate</span><strong>{pct(orderStats.data?.cancellationRate)}</strong></div>
+            <div className="figure"><span className="kicker">Orders · last min</span><strong>{orderStats.data?.ordersLastMinute ?? '–'}</strong></div>
+            <div className="figure"><span className="kicker">Payment success</span><strong>{pct(paymentStats.data?.successRate)}</strong></div>
+            <div className="figure signal"><span className="kicker">Total paid</span><strong>{paymentStats.data ? money(paymentStats.data.totalAmount) : '–'}</strong></div>
+          </div>
+          {orderStats.data && (
+            <p className="muted small">Orders by status: {Object.entries(orderStats.data.statusCounts).map(([k, v]) => `${k.toLowerCase()} ${v}`).join(' · ') || 'none yet'}</p>
+          )}
+        </section>
         <AddProduct adminId={adminId} onAdded={inventory.reload} />
         <Restock adminId={adminId} stock={stock} onDone={inventory.reload} />
       </div>
@@ -170,7 +192,6 @@ function AddProduct({ adminId, onAdded }: { adminId: number; onAdded: () => void
   return (
     <section className="panel wide">
       <h2>New product</h2>
-      <p className="kicker">Adds to the catalogue straight away</p>
       <form className="add-form" onSubmit={submit}>
         <label className="field"><span>Name</span><input required value={form.name} onChange={set('name')} placeholder="Gaming Headset" /></label>
         <label className="field"><span>Category</span>
@@ -206,7 +227,6 @@ function Restock({ adminId, stock, onDone }: { adminId: number; stock: StockLeve
   return (
     <section className="panel wide">
       <h2>Restock</h2>
-      <p className="kicker">Raises stock and clears the low-stock flag once above the threshold</p>
       <form className="add-form restock-form" onSubmit={submit}>
         <label className="field"><span>Product</span>
           <select required value={productId} onChange={e => setProductId(e.target.value)}>
@@ -224,6 +244,62 @@ function Restock({ adminId, stock, onDone }: { adminId: number; stock: StockLeve
 
 const PAYMENT_LABEL: Record<string, string> = { PENDING: 'PENDING', SUCCESS: 'APPROVED', FAILED: 'DECLINED', REFUNDED: 'REFUNDED' }
 const PAYMENT_PILL: Record<string, string> = { PENDING: 'pill-pending', SUCCESS: 'pill-paid', FAILED: 'pill-failed', REFUNDED: 'pill-refunded' }
+
+const pct = (n?: number) => (n == null ? '–' : `${Math.round(n * 100)}%`)
+
+// Every customer's orders, with the admin-side actions: ship, deliver and refund
+function OrdersPanel({ orders, products, payments, error, onChanged }: {
+  orders: Order[] | null; products: Product[] | null; payments: Payment[] | null; error: string | null; onChanged: () => void
+}) {
+  const [busy, setBusy] = useState<number | null>(null)
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const act = async (o: Order, label: string, action: () => Promise<unknown>) => {
+    setBusy(o.id)
+    setMsg(null)
+    try {
+      await action()
+      setMsg({ ok: true, text: `${label} order #${o.id}` })
+    } catch (e) {
+      setMsg({ ok: false, text: `Order #${o.id}: ${e instanceof Error ? e.message : String(e)}` })
+    } finally {
+      setBusy(null)
+      onChanged()
+    }
+  }
+  const list = [...(orders ?? [])].sort((a, b) => b.id - a.id)
+  return (
+    <section className="panel wide">
+      <h2>Orders</h2>
+      <p className="kicker">All customers · newest first · PAID → SHIPPED → DELIVERED</p>
+      <Err msg={error} />
+      {msg && <p className={msg.ok ? 'ok-text' : 'error-text'} role="status" style={{ marginBottom: 12 }}>{msg.text}</p>}
+      {orders?.length === 0 && <p className="muted">No orders yet.</p>}
+      {list.length > 0 && (
+        <div className="scroll table-wrap">
+          <table className="ledger">
+            <thead><tr><th>Order</th><th>Customer</th><th>Items</th><th className="num">Amount</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+              {list.map(o => (
+                <tr key={o.id}>
+                  <td className="id">#{o.id}</td>
+                  <td className="id">#{o.customerId}</td>
+                  <td className="items">{describeItems(o, products)}</td>
+                  <td className="num">{money(o.amount)}</td>
+                  <td><StatusBadge status={o.status} /></td>
+                  <td className="row-actions">
+                    {o.status === 'PAID' && <button className="btn btn-sm btn-ink" disabled={busy === o.id} onClick={() => act(o, 'Shipped', () => api.setOrderStatus(o.id, 'SHIPPED'))}>Ship</button>}
+                    {o.status === 'SHIPPED' && <button className="btn btn-sm btn-ink" disabled={busy === o.id} onClick={() => act(o, 'Delivered', () => api.setOrderStatus(o.id, 'DELIVERED'))}>Deliver</button>}
+                    {canRefund(o, payments) && <button className="btn btn-sm" disabled={busy === o.id} onClick={() => act(o, 'Refunded', () => api.refund(o.id))}>Refund</button>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  )
+}
 
 function Err({ msg }: { msg: string | null }) {
   return msg ? <p className="error-text">{msg}</p> : null

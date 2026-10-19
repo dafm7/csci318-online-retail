@@ -5,71 +5,76 @@ import { useStore, type CartLine } from '../store'
 import ProductArt from '../components/ProductArt'
 import OrderTracker from '../components/OrderTracker'
 
-interface Placed { line: CartLine; order?: Order; error?: string }
+// The whole cart becomes one order (one item per cart line), then the order is paid
+interface Placed { lines: CartLine[]; order?: Order; error?: string }
 
 export default function CartPage() {
   const { cart, customer, setQuantity, removeFromCart, clearCart } = useStore()
-  const [placed, setPlaced] = useState<Placed[] | null>(null)
+  const [placed, setPlaced] = useState<Placed | null>(null)
   const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const total = cart.reduce((sum, l) => sum + l.product.price * l.quantity, 0)
   const items = cart.reduce((n, l) => n + l.quantity, 0)
 
-  // Each order holds one product, so checkout places one order per cart line
   const checkout = async () => {
     if (!customer) return
     setBusy(true)
-    const results = await Promise.all(cart.map(async (line): Promise<Placed> => {
-      try {
-        const order = await api.placeOrder({ customerId: customer.id, productId: line.product.id, quantity: line.quantity })
-        try {
-          await api.pay(order.id)
-        } catch (e) {
-          return { line, order, error: `Payment not taken: ${e instanceof Error ? e.message : String(e)}` }
-        }
-        return { line, order }
-      } catch (e) {
-        return { line, error: e instanceof Error ? e.message : String(e) }
-      }
-    }))
-    setPlaced(results)
+    setError(null)
+    const lines = cart
+    let order: Order
+    try {
+      order = await api.placeOrder(customer.id, lines.map(l => ({ productId: l.product.id, quantity: l.quantity })))
+    } catch (e) {
+      // Not placed (e.g. stock ran out): keep the cart so the customer can adjust it
+      setError(e instanceof Error ? e.message : String(e))
+      setBusy(false)
+      return
+    }
     clearCart()
+    try {
+      await api.pay(order.id)
+      setPlaced({ lines, order })
+    } catch (e) {
+      setPlaced({ lines, order, error: `Payment not taken: ${e instanceof Error ? e.message : String(e)}. You can pay from your account page.` })
+    }
     setBusy(false)
   }
 
-  // Payment happens asynchronously over Kafka: poll until every order leaves PENDING
+  // Payment is confirmed asynchronously over Kafka: poll until the order leaves PENDING
   useEffect(() => {
-    if (!placed?.some(p => p.order?.status === 'PENDING')) return
+    if (placed?.order?.status !== 'PENDING' || placed.error) return
     const t = setTimeout(async () => {
-      const next = await Promise.all(placed.map(async p =>
-        p.order?.status === 'PENDING' ? { ...p, order: await api.order(p.order.id).catch(() => p.order) } : p))
-      setPlaced(next)
+      const order = await api.order(placed.order!.id).catch(() => placed.order)
+      setPlaced(p => (p ? { ...p, order } : p))
     }, 1000)
     return () => clearTimeout(t)
   }, [placed])
 
   if (placed) {
-    const pending = placed.some(p => p.order?.status === 'PENDING')
-    const nonePaid = !placed.some(p => p.order?.status === 'PAID')
+    const status = placed.order?.status
     return (
       <>
         <header className="page-head">
           <h1 className="display">
-            {pending ? <>Processing<em>…</em></> : nonePaid ? <>Not this <em>time.</em></> : <>Thank <em>you.</em></>}
+            {status === 'PENDING' && !placed.error ? <>Processing<em>…</em></> : status === 'PAID' ? <>Thank <em>you.</em></> : <>Not this <em>time.</em></>}
           </h1>
-          <p className="kicker">Payments clear in the background · over {money(PAYMENT_LIMIT)} is declined</p>
+          <p className="kicker">
+            {placed.order ? `Order #${placed.order.id} · ${money(placed.order.amount)}` : 'Not placed'} · over {money(PAYMENT_LIMIT)} is declined
+          </p>
         </header>
         <div className="confirm">
-          {placed.map(p => (
-            <div className="confirm-row" key={p.line.product.id}>
-              <ProductArt product={p.line.product} mini />
+          {placed.lines.map(l => (
+            <div className="confirm-row" key={l.product.id}>
+              <ProductArt product={l.product} mini />
               <div>
-                <p className="kicker">{p.order ? `Order #${p.order.id}` : 'Not placed'} · qty {p.line.quantity}</p>
-                <p className="line-name">{p.line.product.name}</p>
-                <p className="mono small">{money(p.line.product.price * p.line.quantity)}</p>
+                <p className="kicker">qty {l.quantity}</p>
+                <p className="line-name">{l.product.name}</p>
+                <p className="mono small">{money(l.product.price * l.quantity)}</p>
               </div>
-              {p.order ? <OrderTracker status={p.order.status} /> : <p className="error-text">{p.error}</p>}
             </div>
           ))}
+          {placed.order && <OrderTracker status={placed.order.status} />}
+          {placed.error && <p className="error-text">{placed.error}</p>}
         </div>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 32 }}>
           <Link to="/" className="btn">Keep shopping</Link>
@@ -116,7 +121,6 @@ export default function CartPage() {
                 </div>
                 <div className="line-total">
                   <span className="price">{money(subtotal)}</span>
-                  {subtotal > PAYMENT_LIMIT && <span className="warn-tag">Over limit · will be declined</span>}
                 </div>
               </li>
             )
@@ -136,12 +140,14 @@ export default function CartPage() {
           <div className="receipt-row"><span>Shipping</span><span>Free</span></div>
           <hr />
           <div className="receipt-row receipt-total"><span>Total</span><span>{money(total)}</span></div>
+          {total > PAYMENT_LIMIT && <span className="warn-tag">Over {money(PAYMENT_LIMIT)} · payment will be declined</span>}
           <p className="receipt-note">
-            Each line becomes its own order. Payment is checked per order and anything over {money(PAYMENT_LIMIT)} is declined.
+            Everything in your cart becomes one order. Prices and stock are checked when you place it, and a total over {money(PAYMENT_LIMIT)} is declined.
           </p>
+          {error && <p className="error-text" role="alert">{error}</p>}
           {customer
             ? <button className="btn btn-ink btn-wide" disabled={busy} onClick={checkout}>
-                {busy ? 'Placing orders…' : <>Place order <span className="arrow">→</span></>}
+                {busy ? 'Placing order…' : <>Place order <span className="arrow">→</span></>}
               </button>
             : <Link to="/login?next=/cart" className="btn btn-ink btn-wide">Sign in to check out <span className="arrow">→</span></Link>}
         </aside>
