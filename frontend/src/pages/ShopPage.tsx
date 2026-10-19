@@ -21,7 +21,6 @@ export default function ShopPage() {
   const counts = new Map<string, number>()
   for (const p of all.data ?? []) counts.set(p.category, (counts.get(p.category) ?? 0) + 1)
   const categories = [...counts.keys()].sort()
-  const today = new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })
 
   return (
     <>
