@@ -1,7 +1,15 @@
 package com.csci318.user.domain;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import jakarta.persistence.*;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 
 // Aggregate root of the user management context.
 // Created only through the factory methods below, so every user starts in a valid state.
@@ -34,12 +42,10 @@ public class User {
         this.role = role;
     }
 
-    // Factory: anyone who registers themselves is a CUSTOMER
     public static User registerCustomer(String name, String email, String passwordHash) {
         return new User(name, email, passwordHash, Role.CUSTOMER);
     }
 
-    // Factory: admin accounts are only created by the system (see DataLoader)
     public static User createAdmin(String name, String email, String passwordHash) {
         return new User(name, email, passwordHash, Role.ADMIN);
     }

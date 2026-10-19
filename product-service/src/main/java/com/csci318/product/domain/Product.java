@@ -1,7 +1,13 @@
 package com.csci318.product.domain;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import jakarta.persistence.*;
+
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
 
 // Aggregate root of the product catalogue context.
 // Created only through Product.create(...), so every product starts in a valid state.
@@ -19,7 +25,7 @@ public class Product {
 
     public static final int DEFAULT_LOW_STOCK_THRESHOLD = 10;
 
-    protected Product() {}   // for JPA only
+    protected Product() {}   
 
     private Product(String name, Category category, double price, int stock, int lowStockThreshold) {
         this.name = name;

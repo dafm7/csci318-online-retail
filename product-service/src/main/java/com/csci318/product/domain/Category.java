@@ -5,7 +5,6 @@ import java.util.Arrays;
 public enum Category {
     CLOTHES, ELECTRONICS, SPORTS, HOME;
 
-    // Case-insensitive lookup: "electronics" -> ELECTRONICS
     public static Category from(String value) {
         return Arrays.stream(values())
                 .filter(c -> c.name().equalsIgnoreCase(value == null ? "" : value.trim()))
