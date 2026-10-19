@@ -72,8 +72,6 @@ a model-not-found or permission error), choose another model from https://aistud
 Sample inputs that demonstrate each use case. Run them in order on a fresh start (see *Data and resetting*): the
 ids below assume the admin is user 1, the first registered customer is user 2, and the 5 sample products have ids
 1–5 (1 Wireless Mouse $29.99, 2 Mechanical Keyboard $119, 3 Running Shoes $89.50, 4 Coffee Mug $12, 5 Hoodie $49.95).
-Sample outputs for each use case are in [USER_STORIES.md](USER_STORIES.md). It also shows error cases (for example a
-declined payment), so its later order ids are one higher than here.
 
 ### User Service
 

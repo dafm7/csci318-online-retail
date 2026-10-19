@@ -18,6 +18,7 @@ import com.csci318.user.infrastructure.persistence.UserRepository;
 public class UserService {
 
     private static final int RECENT_ORDERS = 5;
+    private static final java.util.Set<String> PAID_STATUSES = java.util.Set.of("PAID", "SHIPPED", "DELIVERED");
 
     private final UserRepository repo;
     private final OrderClient orderClient;
@@ -67,7 +68,8 @@ public class UserService {
     public List<User> all() { return repo.findAll(); }
 
     private UserProfile.OrderHistory summarise(List<OrderData> orders) {
-        List<OrderData> paid = orders.stream().filter(o -> "PAID".equals(o.status())).toList();
+        // Shipped and delivered orders were paid too
+        List<OrderData> paid = orders.stream().filter(o -> PAID_STATUSES.contains(o.status())).toList();
         double totalSpent = Math.round(paid.stream().mapToDouble(OrderData::amount).sum() * 100) / 100.0;
         List<UserProfile.RecentOrder> recent = orders.stream()
                 .sorted(Comparator.comparing(OrderData::id).reversed())

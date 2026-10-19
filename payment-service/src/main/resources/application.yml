@@ -1,5 +1,7 @@
 server:
   port: 8084
+  error:
+    include-message: always   # show e.g. "payment has already been processed" in error responses
 
 services:
   order-url: http://localhost:8083

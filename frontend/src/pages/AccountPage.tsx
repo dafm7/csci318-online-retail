@@ -21,7 +21,8 @@ export default function AccountPage() {
 
   const p = profile.data
   const history = [...(orders.data ?? [])].sort((a, b) => b.id - a.id)
-  const paid = history.filter(o => o.status === 'PAID')
+  // Shipped and delivered orders were paid too
+  const paid = history.filter(o => o.status === 'PAID' || o.status === 'SHIPPED' || o.status === 'DELIVERED')
   const declined = history.filter(o => o.status === 'FAILED').length
 
   const act = async (o: Order, label: string, action: () => Promise<unknown>) => {
